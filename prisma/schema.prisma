@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String        @id @default(cuid())
+  name                String
+  email               String        @unique
+  password            String
+  role                Role          @default(staff)
+  createdAt           DateTime      @default(now())
+  membersCreated      Member[]      @relation("CreatedBy")
+  transactionsCreated Transaction[] @relation("TransactionCreatedBy")
+
+  @@map("users")
+}
+
+model Member {
+  id           String           @id @default(cuid())
+  name         String
+  email        String?          @unique
+  phone        String?
+  address      String?
+  createdBy    String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  creator      User             @relation("CreatedBy", fields: [createdBy], references: [id])
+  terms        TermsCondition[]
+  transactions Transaction[]
+
+  @@map("members")
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  memberId    String
+  amount      Decimal           @db.Decimal(12, 2)
+  type        TransactionType
+  description String?
+  date        DateTime
+  createdBy   String
+  createdAt   DateTime          @default(now())
+  files       TransactionFile[]
+  creator     User              @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
+  member      Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model TransactionFile {
+  id            String      @id @default(cuid())
+  transactionId String
+  fileUrl       String
+  fileKey       String
+  fileType      String
+  fileName      String
+  fileSize      Int
+  uploadedAt    DateTime    @default(now())
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_files")
+}
+
+model TermsCondition {
+  id        String   @id @default(cuid())
+  memberId  String
+  content   String
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("terms_conditions")
+}
+
+enum Role {
+  admin
+  staff
+}
+
+enum TransactionType {
+  credit
+  debit
+}
